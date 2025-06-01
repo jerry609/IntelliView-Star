@@ -1,0 +1,1789 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI面试题生成器 - 原型 (技术版 V3.4)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #111827; /* slate-900 */
+            --bg-secondary: #1F2937; /* slate-800 */
+            --bg-tertiary: #374151; /* slate-700 */
+            --bg-quaternary: #4B5563; /* slate-600 */
+            --text-primary: #F3F4F6; /* gray-200 */
+            --text-secondary: #9CA3AF; /* gray-400 */
+            --text-tertiary: #6B7280; /* gray-500 */
+            --accent-primary: #4F46E5; /* indigo-600 */
+            --accent-secondary: #3B82F6; /* blue-500 */
+            --accent-hover: #4338CA; /* indigo-700 */
+            --border-color: #374151; /* slate-700 */
+            --success-color: #10B981; /* green-500 */
+            --warning-color: #F59E0B; /* yellow-500 */
+            --error-color: #EF4444; /* red-500 */
+        }
+
+        .light-mode {
+            --bg-primary: #F9FAFB; /* gray-50 */
+            --bg-secondary: #FFFFFF; /* white */
+            --bg-tertiary: #F3F4F6; /* gray-100 */
+            --bg-quaternary: #E5E7EB; /* gray-200 */
+            --text-primary: #1F2937; /* gray-800 */
+            --text-secondary: #4B5563; /* gray-600 */
+            --text-tertiary: #6B7280; /* gray-500 */
+            --border-color: #E5E7EB; /* gray-200 */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .app-container-bg { background-color: var(--bg-secondary); }
+        .header-bg { background-color: rgba(31, 41, 55, 0.5); }
+        .light-mode .header-bg { background-color: rgba(229, 231, 235, 0.5); }
+        .border-dynamic { border-color: var(--border-color); }
+        .card-bg { background-color: var(--bg-tertiary); opacity: 0.7; }
+        .light-mode .card-bg { background-color: var(--bg-tertiary); opacity: 1; }
+        .input-bg { background-color: var(--bg-secondary); border-color: var(--bg-quaternary); color: var(--text-primary); }
+        .light-mode .input-bg { background-color: #FFFFFF; border-color: #D1D5DB; color: #1F2937; }
+        .placeholder-dynamic::placeholder { color: var(--text-tertiary); }
+        .text-accent { color: var(--accent-primary); }
+        .text-accent-hover:hover { color: var(--accent-hover); }
+        .button-primary { background-color: var(--accent-primary); color: white; }
+        .button-primary:hover { background-color: var(--accent-hover); }
+        .button-secondary { background-color: var(--bg-quaternary); color: var(--text-primary); }
+        .button-secondary:hover { background-color: var(--text-tertiary); }
+        .nav-btn-active { background-color: var(--accent-primary); color: white; }
+        .nav-btn:not(.nav-btn-active) { color: var(--text-secondary); }
+        .nav-btn:not(.nav-btn-active):hover { background-color: rgba(79, 70, 229, 0.2); color: var(--text-primary); }
+        .difficulty-easy { background-color: rgba(16, 185, 129, 0.2); color: #6EE7B7; border: 1px solid rgba(16, 185, 129, 0.4); }
+        .difficulty-medium { background-color: rgba(245, 158, 11, 0.2); color: #FCD34D; border: 1px solid rgba(245, 158, 11, 0.4); }
+        .difficulty-hard { background-color: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        input[type="file"]::-webkit-file-upload-button { visibility: hidden; }
+        input[type="file"]::before {
+            content: '选择文件'; display: inline-block; background: var(--accent-primary); color: white;
+            border-radius: 0.375rem; padding: 0.5rem 1rem; outline: none; white-space: nowrap;
+            cursor: pointer; font-weight: 500; font-size: 0.875rem; margin-right: 0.5rem;
+        }
+        input[type="file"]:hover::before { background: var(--accent-hover); }
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            padding: 10px 20px; border-radius: 8px; font-size: 0.875rem; z-index: 1000;
+            opacity: 0; transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            color: white;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.success { background-color: var(--success-color); }
+        .toast.error { background-color: var(--error-color); }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px;
+            border-radius: 50%; border-left-color: var(--accent-primary); animation: spin 1s ease infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .favorite-btn svg { transition: fill 0.2s ease-in-out, transform 0.2s ease-in-out; }
+        .favorite-btn.favorited svg { fill: var(--warning-color); transform: scale(1.1); }
+        .nav-btn { padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; transition: background-color 0.2s, color 0.2s; }
+        
+        .answer-section-item {
+            background-color: var(--bg-tertiary); opacity: 0.8;
+            padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; 
+        }
+        .light-mode .answer-section-item { opacity: 1; }
+
+        .follow-up-divider {
+            height: 1px;
+            background-image: linear-gradient(to right, transparent, var(--border-color), transparent);
+            margin: 1.5rem 0;
+        }
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed; inset: 0; background-color: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; z-index: 1001;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background-color: var(--bg-secondary); padding: 1.5rem; border-radius: 0.5rem;
+            width: 90%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transform: scale(0.95); transition: transform 0.3s;
+        }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+
+        /* Markdown Preview Area */
+        .markdown-preview {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            background-color: var(--bg-primary); /* Slightly different bg for contrast */
+            min-height: 100px;
+            margin-top: 0.5rem;
+        }
+        .markdown-preview h1, .markdown-preview h2, .markdown-preview h3 { margin-top: 0.5em; margin-bottom: 0.25em; color: var(--text-primary); }
+        .markdown-preview p { margin-bottom: 0.5em; line-height: 1.6; color: var(--text-secondary); }
+        .markdown-preview ul, .markdown-preview ol { margin-left: 1.5em; margin-bottom: 0.5em; color: var(--text-secondary); }
+        .markdown-preview code { 
+            background-color: var(--bg-secondary); 
+            padding: 0.1em 0.3em; 
+            border-radius: 0.25rem; 
+            font-family: 'Courier New', Courier, monospace;
+            color: var(--accent-secondary);
+        }
+        .markdown-preview pre > code { display: block; padding: 0.5em; overflow-x: auto; }
+        .markdown-preview blockquote { border-left: 3px solid var(--accent-primary); padding-left: 1em; margin-left: 0; color: var(--text-tertiary); }
+
+        /* Chart placeholder */
+        .chart-placeholder {
+            height: 200px; /* Adjust as needed */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed var(--border-color);
+            border-radius: 0.5rem;
+            color: var(--text-tertiary);
+            text-align: center;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="appContainer" class="app-container-bg w-full max-w-4xl shadow-2xl rounded-xl overflow-hidden my-8">
+        <header class="header-bg p-6 border-b border-dynamic">
+             <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-accent">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L1.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09l2.846.813-.813 2.846a4.5 4.5 0 00-3.09 3.09zM18.25 12L15.404 11.187a4.5 4.5 0 00-3.09-3.09L11.25 5.25l-.813 2.846a4.5 4.5 0 00-3.09 3.09L4.5 12l2.846.813a4.5 4.5 0 003.09 3.09L11.25 18.75l.813-2.846a4.5 4.5 0 003.09-3.09L18.25 12zM12.75 15l.813 2.846a4.5 4.5 0 003.09 3.09L19.5 21.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L12.75 15z" />
+                    </svg>
+                    <div>
+                        <h1 class="text-2xl font-bold text-primary">AI 面试官 (V3.4)</h1>
+                        <p class="text-sm text-secondary">统计增强，编辑器优化</p>
+                    </div>
+                </div>
+                <button id="themeToggleBtn" title="切换主题" class="p-2 rounded-full hover:bg-quaternary">
+                    <svg id="themeIconMoon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-secondary"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
+                    <svg id="themeIconSun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-secondary hidden"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </button>
+            </div>
+        </header>
+
+        <main class="p-6 md:p-8">
+            <section id="mainMenuSection" class="">
+                <h2 class="text-2xl font-semibold text-accent mb-6 text-center">选择您的练习模式</h2>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <button id="startStandardPracticeBtn" class="card-bg p-6 rounded-lg shadow-lg hover:shadow-accent transition-shadow text-left border border-dynamic">
+                        <h3 class="text-xl font-bold text-primary mb-2">标准练习</h3>
+                        <p class="text-secondary text-sm">AI生成题目，逐题作答、收藏、回顾错题。</p>
+                    </button>
+                    <button id="startMockInterviewBtn" class="card-bg p-6 rounded-lg shadow-lg hover:shadow-accent transition-shadow text-left border border-dynamic">
+                        <h3 class="text-xl font-bold text-primary mb-2">模拟面试</h3>
+                        <p class="text-secondary text-sm">选择角色与时长，进行沉浸式模拟面试体验。</p>
+                    </button>
+                    <button id="viewStatisticsBtn" class="card-bg p-6 rounded-lg shadow-lg hover:shadow-accent transition-shadow text-left border border-dynamic">
+                        <h3 class="text-xl font-bold text-primary mb-2">练习统计</h3>
+                        <p class="text-secondary text-sm">查看您的练习数据、掌握程度和进步轨迹。</p>
+                    </button>
+                </div>
+            </section>
+
+            <section id="inputSection" class="hidden">
+                 <div class="grid md:grid-cols-2 gap-6 md:gap-8">
+                    <div class="card-bg p-6 rounded-lg shadow-lg border border-dynamic">
+                        <h2 class="text-xl font-semibold mb-1 text-accent">1. 上传您的简历</h2>
+                        <p class="text-sm text-secondary mb-4">请上传 PDF 格式的简历文件。</p>
+                        <div id="dropZone" class="mt-2 flex justify-center items-center w-full h-48 px-6 pt-5 pb-6 border-2 border-dynamic border-dashed rounded-md cursor-pointer hover:border-accent transition-colors">
+                            <div class="space-y-1 text-center">
+                                <svg class="mx-auto h-12 w-12 text-tertiary" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                                <div class="flex text-sm text-tertiary">
+                                    <label for="resumeFile" class="relative cursor-pointer bg-secondary rounded-md font-medium text-accent text-accent-hover focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-bg-secondary focus-within:ring-accent"><span>上传文件</span><input id="resumeFile" name="resumeFile" type="file" class="sr-only" accept=".pdf"></label>
+                                    <p class="pl-1">或拖拽到此处</p>
+                                </div>
+                                <p class="text-xs text-tertiary">仅支持 PDF, 最大 5MB</p>
+                            </div>
+                        </div>
+                        <div id="fileNameDisplay" class="mt-3 text-sm text-secondary truncate"></div>
+                        <div id="resumeError" class="mt-2 text-sm" style="color: var(--error-color);"></div>
+                    </div>
+                    <div class="card-bg p-6 rounded-lg shadow-lg border border-dynamic">
+                        <h2 class="text-xl font-semibold mb-1 text-accent">2. 粘贴岗位要求 (JD)</h2>
+                        <p class="text-sm text-secondary mb-4">请将目标岗位的描述粘贴在此处。</p>
+                        <textarea id="jobDescription" rows="10" class="w-full p-3 input-bg border rounded-md focus:ring-2 focus:ring-accent focus:border-accent placeholder-dynamic resize-none no-scrollbar" placeholder="例如：负责公司XX产品的后端研发..."></textarea>
+                        <div id="jdError" class="mt-2 text-sm" style="color: var(--error-color);"></div>
+                    </div>
+                </div>
+                <div class="mt-8 text-center">
+                    <button id="generateBtn" class="button-primary font-semibold py-3 px-8 rounded-lg shadow-md transition-colors duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-opacity-50"><span class="flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L1.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09l2.846.813-.813 2.846a4.5 4.5 0 00-3.09 3.09zM18.25 12L15.404 11.187a4.5 4.5 0 00-3.09-3.09L11.25 5.25l-.813 2.846a4.5 4.5 0 00-3.09 3.09L4.5 12l2.846.813a4.5 4.5 0 003.09 3.09L11.25 18.75l.813-2.846a4.5 4.5 0 003.09-3.09L18.25 12z" /></svg>智能生成面试题</span></button>
+                </div>
+                <p class="mt-6 text-xs text-center text-tertiary"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 inline mr-1"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg>我们重视您的数据隐私。</p>
+            </section>
+
+            <section id="loadingSection" class="hidden">
+                <div class="flex flex-col items-center justify-center py-20">
+                    <div class="spinner mb-6"></div>
+                    <p class="text-xl font-semibold text-accent">正在智能分析并生成技术面试题...</p>
+                    <p class="text-secondary mt-2">这可能需要一点时间，请稍候片刻。</p>
+                    <img src="https://images.unsplash.com/photo-1521791136064-7986c2920216?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=60" alt="[分析中的图片]" class="mt-8 w-64 h-auto rounded-lg opacity-50" onerror="this.style.display='none'">
+                </div>
+            </section>
+
+            <section id="resultsSection" class="hidden">
+                 <button id="backToMainMenuBtnResults" class="mb-6 text-accent text-accent-hover font-medium flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                    返回主菜单
+                </button>
+                <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <h2 id="questionListTitle" class="text-2xl md:text-3xl font-bold text-accent">为您生成的专属技术面试题</h2>
+                    <div class="flex space-x-1 border border-dynamic rounded-lg p-1 self-end sm:self-center">
+                        <button id="showAllQuestionsBtn" data-view="all" class="nav-btn nav-btn-active">全部题目</button>
+                        <button id="showFavoritesBtn" data-view="favorites" class="nav-btn">我的收藏 <span id="favoritesCount" class="text-xs ml-1 opacity-70"></span></button>
+                        <button id="showMistakesBtn" data-view="mistakes" class="nav-btn">错题回顾 <span id="mistakesCount" class="text-xs ml-1 opacity-70"></span></button>
+                        <button id="showCustomSetsBtn" data-view="customSets" class="nav-btn">我的练习集 <span id="customSetsCount" class="text-xs ml-1 opacity-70"></span></button>
+                    </div>
+                </div>
+                <div id="allQuestionsFilters" class="mb-6 flex flex-col sm:flex-row gap-4 items-center">
+                    <select id="categoryFilter" class="input-bg border-dynamic p-2 rounded-md text-sm w-full sm:w-auto">
+                        <option value="">所有分类</option>
+                        </select>
+                    <select id="difficultyFilter" class="input-bg border-dynamic p-2 rounded-md text-sm w-full sm:w-auto">
+                        <option value="">所有难度</option>
+                        <option value="简单">简单</option>
+                        <option value="中等">中等</option>
+                        <option value="困难">困难</option>
+                    </select>
+                    <button id="applyFiltersBtn" class="button-secondary text-sm py-2 px-4 rounded-md w-full sm:w-auto">应用筛选</button>
+                    <button id="exportAllQuestionsBtn" class="button-secondary text-sm py-2 px-4 rounded-md w-full sm:w-auto ml-auto">导出当前列表</button>
+                </div>
+                <div id="customSetsManagementArea" class="hidden mb-6">
+                    <div class="flex justify-between items-center">
+                        <button id="createNewSetBtn" class="button-primary text-sm py-2 px-4 rounded-md mb-4">创建新练习集</button>
+                        <button id="exportCustomSetsBtn" class="button-secondary text-sm py-2 px-4 rounded-md mb-4">导出练习集</button>
+                    </div>
+                    <div id="customSetsList" class="space-y-2">
+                        </div>
+                </div>
+                 <div id="favoritesManagementArea" class="hidden mb-6 text-right">
+                    <button id="exportFavoritesBtn" class="button-secondary text-sm py-2 px-4 rounded-md">导出收藏夹</button>
+                </div>
+                <div id="mistakesManagementArea" class="hidden mb-6 text-right">
+                    <button id="exportMistakesBtn" class="button-secondary text-sm py-2 px-4 rounded-md">导出错题本</button>
+                </div>
+
+
+                <p class="text-center text-secondary mb-8" id="resultsSummary">基于您的简历和目标岗位。点击题目开始作答。</p>
+                
+                <div class="bg-tertiary/30 p-6 rounded-lg shadow-xl max-h-[50vh] overflow-y-auto no-scrollbar border border-dynamic">
+                    <div id="questionsListContainer"></div>
+                    <p id="emptyStateMessage" class="text-center text-tertiary py-10 hidden">这里空空如也～ 试试调整筛选或开始新的练习吧！</p>
+                </div>
+
+                <div class="mt-8 flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-6">
+                    <button id="copyAllBtn" class="w-full md:w-auto font-semibold py-3 px-6 rounded-lg shadow-md transition-colors duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-opacity-50 flex items-center justify-center" style="background-color: var(--success-color); color: white;">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m9.75 0h-3.25c-.621 0-1.125.504-1.125 1.125v7.5c0 .621.504 1.125 1.125 1.125h3.25c.621 0 1.125-.504 1.125-1.125v-7.5c0-.621-.504-1.125-1.125-1.125z" /></svg>
+                        复制当前列表题目
+                    </button>
+                    <button id="resetBtnStandard" class="button-secondary w-full md:w-auto font-semibold py-3 px-6 rounded-lg shadow-md transition-colors duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-opacity-50 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                        重新生成
+                    </button>
+                </div>
+            </section>
+
+            <section id="answerSection" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <button id="backToQuestionsBtn" class="text-accent text-accent-hover font-medium flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                        返回题目列表
+                    </button>
+                    <div id="answerTimerDisplay" class="text-sm text-secondary">用时: 00:00</div>
+                    <button id="answerViewFavoriteBtn" class="favorite-btn p-2 rounded-full hover:bg-tertiary">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-secondary"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                    </button>
+                </div>
+
+                <div class="card-bg p-6 rounded-lg shadow-lg border border-dynamic">
+                    <h3 class="text-xl font-semibold text-accent mb-1">题目详情:</h3>
+                    <div id="selectedQuestionText" class="p-3 bg-secondary rounded-md text-primary mb-4 whitespace-pre-wrap border border-dynamic"></div>
+                    <span id="selectedQuestionDifficulty" class="difficulty-tag mb-4 inline-block"></span>
+
+                    <h3 class="text-lg font-semibold text-accent mb-2 mt-4">您的回答:</h3>
+                    <div class="flex items-center space-x-2 mb-2">
+                        <button id="toggleAnswerPreviewBtn" class="text-xs button-secondary py-1 px-2 rounded-md">切换预览</button>
+                    </div>
+                    <textarea id="userAnswerText" rows="8" class="w-full p-3 input-bg border rounded-md focus:ring-2 focus:ring-accent focus:border-accent placeholder-dynamic resize-none no-scrollbar" placeholder="请在此输入您的答案 (支持Markdown)..."></textarea>
+                    <div id="userAnswerPreview" class="markdown-preview hidden"></div>
+                    
+                    <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                        <button id="submitAnswerBtn" class="flex-1 font-semibold py-2.5 px-5 rounded-lg shadow-md transition-colors duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-opacity-50 flex items-center justify-center" style="background-color: var(--success-color); color:white;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            提交AI打分
+                        </button>
+                        <button id="viewReferenceAnswerBtn" class="flex-1 font-semibold py-2.5 px-5 rounded-lg shadow-md transition-colors duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-opacity-50 flex items-center justify-center" style="background-color: var(--accent-secondary); color:white;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>
+                            查看参考答案
+                        </button>
+                    </div>
+                </div>
+
+                <div id="aiScoreSection" class="answer-section-item hidden">
+                    <h3 class="text-lg font-semibold text-accent mb-2">AI 评分结果:</h3>
+                    <p id="aiScoreDisplay" class="text-2xl font-bold"></p>
+                    <div id="aiFeedbackDetails" class="mt-2 space-y-1 text-sm text-secondary">
+                        <p><strong><span class="text-green-400">✔</span> 回答亮点:</strong> <span id="aiFeedbackHighlights">待AI分析...</span></p>
+                        <p><strong><span class="text-yellow-400">!</span> 可改进点:</strong> <span id="aiFeedbackImprovements">待AI分析...</span></p>
+                        <p><strong><span class="text-blue-400">?</span> 建议学习:</strong> <span id="aiFeedbackSuggestions">待AI分析...</span></p>
+                    </div>
+                </div>
+                
+                <div id="followUpQuestionSection" class="answer-section-item hidden">
+                    <div class="follow-up-divider"></div>
+                    <h3 class="text-lg font-semibold text-accent mb-2 mt-4">AI 追问:</h3>
+                    <div id="followUpQuestionText" class="p-3 bg-secondary rounded-md text-primary mb-4 whitespace-pre-wrap border border-dynamic"></div>
+                    <textarea id="followUpAnswerText" rows="5" class="w-full p-3 input-bg border rounded-md focus:ring-2 focus:ring-accent placeholder-dynamic resize-none no-scrollbar" placeholder="请针对追问进行回答..."></textarea>
+                    <button id="submitFollowUpAnswerBtn" class="mt-3 w-full sm:w-auto button-primary font-semibold py-2 px-4 rounded-lg shadow-md">提交追问回答</button>
+                    <div id="followUpAiScoreSection" class="mt-3 hidden">
+                        <p id="followUpAiScoreDisplay" class="text-md font-bold"></p>
+                        <p id="followUpAiFeedbackDisplay" class="text-sm text-secondary mt-1"></p>
+                    </div>
+                </div>
+
+
+                <div id="referenceAnswerSection" class="answer-section-item hidden">
+                    <h3 class="text-lg font-semibold text-accent mb-2">参考答案:</h3>
+                    <p id="referenceAnswerDisplay" class="text-primary whitespace-pre-wrap"></p>
+                    <div class="mt-4">
+                        <h4 class="text-md font-semibold text-accent mb-1">相关资源与知识点:</h4>
+                        <ul id="relatedResourcesList" class="list-disc list-inside text-sm text-secondary space-y-1">
+                            <li><a href="#" class="text-accent-secondary hover:underline">相关知识点A (示例链接)</a></li>
+                        </ul>
+                    </div>
+                </div>
+                 <div id="mistakeEntryDetails" class="answer-section-item hidden">
+                    <h3 class="text-lg font-semibold mb-2" style="color: var(--error-color);">我的错误回顾:</h3>
+                    <p class="text-sm text-secondary mb-1">当时得分: <span id="mistakeEntryScore" class="font-semibold"></span></p>
+                    <p class="text-sm text-secondary mb-3">当时AI反馈: <span id="mistakeEntryFeedback" class="italic"></span></p>
+                    <h4 class="text-md font-semibold text-primary mb-1 mt-3">我当时的回答:</h4>
+                    <p id="mistakeEntryUserAnswer" class="p-3 bg-secondary rounded text-sm text-primary whitespace-pre-wrap border border-dynamic"></p>
+                </div>
+            </section>
+            
+            <section id="mockInterviewSection" class="hidden">
+                 <button id="backToMainMenuBtnMock" class="mb-6 text-accent text-accent-hover font-medium flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                    返回主菜单
+                </button>
+                <div id="mockInterviewSetup">
+                    <h2 class="text-2xl font-semibold text-accent mb-6 text-center">配置模拟面试</h2>
+                    <div class="card-bg p-6 rounded-lg shadow-lg space-y-4 border border-dynamic">
+                        <div>
+                            <label for="mockInterviewRole" class="block text-sm font-medium text-primary mb-1">面试角色/主题:</label>
+                            <select id="mockInterviewRole" class="w-full p-2 input-bg border rounded-md focus:ring-2 focus:ring-accent">
+                                <option value="general_tech">通用技术岗</option>
+                                <option value="java_backend_3yr">Java后端 (3年经验)</option>
+                                <option value="frontend_entry">前端初级岗</option>
+                                <option value="system_design_senior">系统设计 (资深)</option>
+                                <option value="custom_topic">自定义主题 (基于JD)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="mockInterviewDuration" class="block text-sm font-medium text-primary mb-1">面试时长:</label>
+                            <select id="mockInterviewDuration" class="w-full p-2 input-bg border rounded-md focus:ring-2 focus:ring-accent">
+                                <option value="15">15 分钟</option>
+                                <option value="30" selected>30 分钟</option>
+                                <option value="45">45 分钟</option>
+                                <option value="60">60 分钟</option>
+                            </select>
+                        </div>
+                         <button id="beginMockInterviewBtn" class="w-full button-primary font-semibold py-3 px-6 rounded-lg shadow-md">开始模拟面试</button>
+                    </div>
+                </div>
+
+                <div id="mockInterviewActive" class="hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-accent">模拟面试进行中...</h2>
+                        <div id="mockInterviewTimerDisplay" class="text-lg font-semibold text-secondary">00:00 / 30:00</div>
+                    </div>
+                    <div id="mockInterviewQuestionArea" class="card-bg p-6 rounded-lg shadow-lg border border-dynamic">
+                        <p class="text-sm text-secondary">题目 <span id="mockCurrentQNum">1</span> / <span id="mockTotalQNum">5</span></p>
+                        <div id="mockQuestionText" class="my-3 p-3 bg-secondary rounded-md text-primary whitespace-pre-wrap border border-dynamic"></div>
+                        <textarea id="mockAnswerText" rows="6" class="w-full p-3 input-bg border rounded-md focus:ring-2 focus:ring-accent placeholder-dynamic resize-none no-scrollbar" placeholder="在此输入您的回答..."></textarea>
+                        <div class="mt-4 flex justify-end space-x-3">
+                             <button id="mockSkipQuestionBtn" class="button-secondary text-sm py-2 px-4 rounded-md">跳过此题</button>
+                             <button id="mockNextQuestionBtn" class="button-primary text-sm py-2 px-4 rounded-md">下一题 / 提交回答</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="mockInterviewSummary" class="hidden">
+                     <h2 class="text-2xl font-semibold text-accent mb-6 text-center">模拟面试总结报告</h2>
+                     <div class="card-bg p-6 rounded-lg shadow-lg border border-dynamic">
+                        <p class="text-secondary mb-1">面试角色: <span id="summaryRole" class="font-medium text-primary"></span></p>
+                        <p class="text-secondary mb-1">总用时: <span id="mockTotalTimeTaken" class="font-medium text-primary"></span></p>
+                        <p class="text-secondary mb-4">回答情况: <span id="mockAnsweredCount" class="font-medium text-primary"></span> / <span id="mockTotalAttempted" class="font-medium text-primary"></span></p>
+                        
+                        <div class="mb-4">
+                            <h4 class="text-md font-semibold text-primary mb-1">整体评估 (模拟):</h4>
+                            <p id="summaryOverallAssessment" class="text-sm text-secondary italic">本次面试表现良好，对XX方面掌握较好，但YY方面仍需加强...</p>
+                        </div>
+                        <div class="mb-4">
+                            <h4 class="text-md font-semibold text-primary mb-1">优势分析 (模拟):</h4>
+                            <ul id="summaryStrengths" class="list-disc list-inside text-sm text-secondary space-y-1">
+                                <li>对[知识点A]的理解较为深入。</li>
+                                <li>[项目经验B]的阐述清晰。</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="text-md font-semibold text-primary mb-1">待提高领域 (模拟):</h4>
+                            <ul id="summaryWeaknesses" class="list-disc list-inside text-sm text-secondary space-y-1">
+                                <li>[算法题C]的解题思路可以更优化。</li>
+                                <li>对[系统设计D]的考虑不够全面。</li>
+                            </ul>
+                        </div>
+                        <button id="mockInterviewEndBtn" class="mt-6 w-full button-secondary font-semibold py-3 px-6 rounded-lg shadow-md">返回主菜单</button>
+                     </div>
+                </div>
+            </section>
+
+            <section id="statisticsSection" class="hidden">
+                <button id="backToMainMenuBtnStats" class="mb-6 text-accent text-accent-hover font-medium flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                    返回主菜单
+                </button>
+                <h2 class="text-2xl md:text-3xl font-bold text-accent mb-8 text-center">我的练习统计</h2>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="card-bg p-6 rounded-lg shadow-lg border border-dynamic">
+                        <h3 class="text-xl font-semibold text-primary mb-3">整体概览</h3>
+                        <div class="space-y-2 text-sm">
+                            <p class="text-secondary">总练习题数 (标准模式): <span id="statsTotalAnswered" class="font-medium text-primary">0</span></p>
+                            <p class="text-secondary">平均得分 (标准模式): <span id="statsAverageScore" class="font-medium text-primary">N/A</span></p>
+                            <p class="text-secondary">完成模拟面试次数: <span id="statsMockInterviewsCompleted" class="font-medium text-primary">0</span></p>
+                            <hr class="border-dynamic my-2">
+                            <p class="text-secondary">收藏题目总数: <span id="statsTotalFavorites" class="font-medium text-primary">0</span></p>
+                            <p class="text-secondary">当前错题总数: <span id="statsTotalMistakes" class="font-medium text-primary">0</span></p>
+                        </div>
+                    </div>
+                    <div class="card-bg p-6 rounded-lg shadow-lg border border-dynamic">
+                        <h3 class="text-xl font-semibold text-primary mb-3">各分类平均分 (标准模式)</h3>
+                        <div id="statsCategoryAverageScores" class="space-y-1 text-sm">
+                            <p class="text-tertiary">暂无足够数据。</p>
+                        </div>
+                    </div>
+                    <div class="card-bg p-6 rounded-lg shadow-lg border border-dynamic md:col-span-2">
+                        <h3 class="text-xl font-semibold text-primary mb-3">练习活跃度 (模拟图表)</h3>
+                        <div class="chart-placeholder">
+                            [ 此处可放置柱状图或折线图展示每日/每周练习题数 ]
+                        </div>
+                    </div>
+                    <div class="card-bg p-6 rounded-lg shadow-lg border border-dynamic md:col-span-2">
+                        <h3 class="text-xl font-semibold text-primary mb-3">错题高发分类 (Top 5)</h3>
+                        <ul id="statsMistakeCategories" class="list-decimal list-inside text-secondary space-y-1 text-sm">
+                            </ul>
+                        <p id="statsNoMistakesYet" class="text-tertiary hidden">恭喜！目前还没有错题记录。</p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+    
+    <div id="createSetModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-xl font-semibold text-primary mb-4">创建新练习集</h3>
+            <input type="text" id="newSetNameInput" class="w-full p-2 input-bg border rounded-md mb-4 placeholder-dynamic" placeholder="请输入练习集名称">
+            <div class="flex justify-end space-x-3">
+                <button id="cancelCreateSetBtn" class="button-secondary py-2 px-4 rounded-md text-sm">取消</button>
+                <button id="confirmCreateSetBtn" class="button-primary py-2 px-4 rounded-md text-sm">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addToSetModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-xl font-semibold text-primary mb-4">添加到练习集</h3>
+            <p class="text-sm text-secondary mb-1">选择要添加到的练习集:</p>
+            <select id="selectSetDropdown" class="w-full p-2 input-bg border rounded-md mb-4">
+                </select>
+            <p class="text-xs text-tertiary mb-3">没有合适的练习集？请先在“我的练习集”中创建。</p>
+            <div class="flex justify-end space-x-3">
+                <button id="cancelAddToSetBtn" class="button-secondary py-2 px-4 rounded-md text-sm">取消</button>
+                <button id="confirmAddToSetBtn" class="button-primary py-2 px-4 rounded-md text-sm">添加</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // === DOM Elements ===
+        const appContainer = document.getElementById('appContainer');
+        const mainMenuSection = document.getElementById('mainMenuSection');
+        const startStandardPracticeBtn = document.getElementById('startStandardPracticeBtn');
+        const startMockInterviewBtn = document.getElementById('startMockInterviewBtn');
+        const viewStatisticsBtn = document.getElementById('viewStatisticsBtn'); 
+        
+        const inputSection = document.getElementById('inputSection');
+        const loadingSection = document.getElementById('loadingSection');
+        const resultsSection = document.getElementById('resultsSection');
+        const answerSection = document.getElementById('answerSection');
+        const mockInterviewSection = document.getElementById('mockInterviewSection');
+        const statisticsSection = document.getElementById('statisticsSection'); 
+
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const themeIconMoon = document.getElementById('themeIconMoon');
+        const themeIconSun = document.getElementById('themeIconSun');
+        
+        const resumeFile = document.getElementById('resumeFile');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const dropZone = document.getElementById('dropZone');
+        const jobDescription = document.getElementById('jobDescription');
+        const generateBtn = document.getElementById('generateBtn');
+        
+        const backToMainMenuBtnResults = document.getElementById('backToMainMenuBtnResults');
+        const backToMainMenuBtnMock = document.getElementById('backToMainMenuBtnMock');
+        const backToMainMenuBtnStats = document.getElementById('backToMainMenuBtnStats'); 
+
+        const questionListTitle = document.getElementById('questionListTitle');
+        const questionsListContainer = document.getElementById('questionsListContainer');
+        const emptyStateMessage = document.getElementById('emptyStateMessage');
+        const showAllQuestionsBtn = document.getElementById('showAllQuestionsBtn');
+        const showFavoritesBtn = document.getElementById('showFavoritesBtn');
+        const showMistakesBtn = document.getElementById('showMistakesBtn');
+        const showCustomSetsBtn = document.getElementById('showCustomSetsBtn'); 
+        const favoritesCountSpan = document.getElementById('favoritesCount');
+        const mistakesCountSpan = document.getElementById('mistakesCount');
+        const customSetsCountSpan = document.getElementById('customSetsCount'); 
+
+        const allQuestionsFilters = document.getElementById('allQuestionsFilters');
+        const categoryFilter = document.getElementById('categoryFilter');
+        const difficultyFilter = document.getElementById('difficultyFilter');
+        const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+        const exportAllQuestionsBtn = document.getElementById('exportAllQuestionsBtn'); 
+
+        const customSetsManagementArea = document.getElementById('customSetsManagementArea');
+        const createNewSetBtn = document.getElementById('createNewSetBtn');
+        const customSetsList = document.getElementById('customSetsList');
+        const exportCustomSetsBtn = document.getElementById('exportCustomSetsBtn'); 
+        const favoritesManagementArea = document.getElementById('favoritesManagementArea'); 
+        const exportFavoritesBtn = document.getElementById('exportFavoritesBtn'); 
+        const mistakesManagementArea = document.getElementById('mistakesManagementArea'); 
+        const exportMistakesBtn = document.getElementById('exportMistakesBtn'); 
+
+
+        const copyAllBtn = document.getElementById('copyAllBtn');
+        const resetBtnStandard = document.getElementById('resetBtnStandard'); 
+        const resultsSummary = document.getElementById('resultsSummary');
+
+        const resumeError = document.getElementById('resumeError');
+        const jdError = document.getElementById('jdError');
+        const toast = document.getElementById('toast');
+
+        // Answer Section Elements
+        const backToQuestionsBtn = document.getElementById('backToQuestionsBtn');
+        const answerTimerDisplay = document.getElementById('answerTimerDisplay');
+        const answerViewFavoriteBtn = document.getElementById('answerViewFavoriteBtn');
+        const selectedQuestionText = document.getElementById('selectedQuestionText');
+        const selectedQuestionDifficulty = document.getElementById('selectedQuestionDifficulty');
+        const userAnswerText = document.getElementById('userAnswerText');
+        const toggleAnswerPreviewBtn = document.getElementById('toggleAnswerPreviewBtn'); 
+        const userAnswerPreview = document.getElementById('userAnswerPreview'); 
+        const submitAnswerBtn = document.getElementById('submitAnswerBtn');
+        const viewReferenceAnswerBtn = document.getElementById('viewReferenceAnswerBtn');
+        const aiScoreSection = document.getElementById('aiScoreSection');
+        const aiScoreDisplay = document.getElementById('aiScoreDisplay');
+        const aiFeedbackHighlights = document.getElementById('aiFeedbackHighlights');
+        const aiFeedbackImprovements = document.getElementById('aiFeedbackImprovements');
+        const aiFeedbackSuggestions = document.getElementById('aiFeedbackSuggestions');
+
+        const referenceAnswerSection = document.getElementById('referenceAnswerSection');
+        const referenceAnswerDisplay = document.getElementById('referenceAnswerDisplay');
+        const relatedResourcesList = document.getElementById('relatedResourcesList'); 
+        const mistakeEntryDetails = document.getElementById('mistakeEntryDetails');
+        const mistakeEntryScore = document.getElementById('mistakeEntryScore');
+        const mistakeEntryFeedback = document.getElementById('mistakeEntryFeedback'); 
+        const mistakeEntryUserAnswer = document.getElementById('mistakeEntryUserAnswer');
+
+        const followUpQuestionSection = document.getElementById('followUpQuestionSection');
+        const followUpQuestionText = document.getElementById('followUpQuestionText');
+        const followUpAnswerText = document.getElementById('followUpAnswerText');
+        const submitFollowUpAnswerBtn = document.getElementById('submitFollowUpAnswerBtn');
+        const followUpAiScoreSection = document.getElementById('followUpAiScoreSection');
+        const followUpAiScoreDisplay = document.getElementById('followUpAiScoreDisplay');
+        const followUpAiFeedbackDisplay = document.getElementById('followUpAiFeedbackDisplay');
+
+        // Mock Interview Elements
+        const mockInterviewSetup = document.getElementById('mockInterviewSetup');
+        const mockInterviewRole = document.getElementById('mockInterviewRole'); 
+        const mockInterviewDuration = document.getElementById('mockInterviewDuration');
+        const mockInterviewTopic = document.getElementById('mockInterviewTopic');
+        const beginMockInterviewBtn = document.getElementById('beginMockInterviewBtn');
+        const mockInterviewActive = document.getElementById('mockInterviewActive');
+        const mockInterviewTimerDisplay = document.getElementById('mockInterviewTimerDisplay');
+        const mockInterviewQuestionArea = document.getElementById('mockInterviewQuestionArea');
+        const mockCurrentQNum = document.getElementById('mockCurrentQNum');
+        const mockTotalQNum = document.getElementById('mockTotalQNum');
+        const mockQuestionText = document.getElementById('mockQuestionText');
+        const mockAnswerText = document.getElementById('mockAnswerText');
+        const mockSkipQuestionBtn = document.getElementById('mockSkipQuestionBtn');
+        const mockNextQuestionBtn = document.getElementById('mockNextQuestionBtn');
+        const mockInterviewSummary = document.getElementById('mockInterviewSummary');
+        const summaryRole = document.getElementById('summaryRole'); 
+        const summaryOverallAssessment = document.getElementById('summaryOverallAssessment'); 
+        const summaryStrengths = document.getElementById('summaryStrengths'); 
+        const summaryWeaknesses = document.getElementById('summaryWeaknesses'); 
+        const mockTotalTimeTaken = document.getElementById('mockTotalTimeTaken');
+        const mockAnsweredCount = document.getElementById('mockAnsweredCount');
+        const mockTotalAttempted = document.getElementById('mockTotalAttempted');
+        const mockSummaryList = document.getElementById('mockSummaryList');
+        const mockInterviewEndBtn = document.getElementById('mockInterviewEndBtn');
+
+        // Statistics Elements (IDs are now fetched inside renderStatistics)
+
+        // Modals (New)
+        const createSetModal = document.getElementById('createSetModal');
+        const newSetNameInput = document.getElementById('newSetNameInput');
+        const cancelCreateSetBtn = document.getElementById('cancelCreateSetBtn');
+        const confirmCreateSetBtn = document.getElementById('confirmCreateSetBtn');
+        const addToSetModal = document.getElementById('addToSetModal');
+        const selectSetDropdown = document.getElementById('selectSetDropdown');
+        const cancelAddToSetBtn = document.getElementById('cancelAddToSetBtn');
+        const confirmAddToSetBtn = document.getElementById('confirmAddToSetBtn');
+
+
+        // === State Variables ===
+        let uploadedFileName = '';
+        let allGeneratedQuestions = []; 
+        let favoriteQuestionIds = []; 
+        let mistakeLogEntries = []; 
+        let customPracticeSets = []; 
+        let questionToAddToSet = null; 
+
+        let currentQuestionListView = 'all'; 
+        let currentSelectedQuestionId = null; 
+        let currentAnswerTimerInterval = null;
+        let currentAnswerStartTime = 0;
+        let currentFollowUp = null; 
+
+        let mockInterviewState = {
+            isActive: false,
+            questions: [],
+            currentQuestionIndex: 0,
+            answers: [],
+            timerInterval: null,
+            startTime: 0,
+            durationMinutes: 30,
+            role: '' 
+        };
+
+        const MISTAKE_THRESHOLD = 80; 
+        let practiceStats = { 
+            totalAnsweredStandard: 0,
+            totalScoreStandard: 0,
+            categoryAttempts: {}, 
+            mockInterviewsCompleted: 0,
+            questionScores: {}, 
+            answerTimestamps: [] 
+        };
+
+
+        // === Utility Functions ===
+        function showToast(message, type = 'success') {
+            toast.textContent = message;
+            toast.className = `toast show ${type}`;
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        function navigateTo(sectionToShow) {
+            [mainMenuSection, inputSection, loadingSection, resultsSection, answerSection, mockInterviewSection, statisticsSection].forEach(sec => sec.classList.add('hidden'));
+            sectionToShow.classList.remove('hidden');
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+        
+        // === Theme Toggle ===
+        themeToggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            const isLightMode = document.body.classList.contains('light-mode');
+            themeIconMoon.classList.toggle('hidden', isLightMode);
+            themeIconSun.classList.toggle('hidden', !isLightMode);
+            localStorage.setItem('theme', isLightMode ? 'light' : 'dark');
+        });
+
+        function applyInitialTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+                themeIconMoon.classList.add('hidden');
+                themeIconSun.classList.remove('hidden');
+            } else {
+                document.body.classList.remove('light-mode');
+                themeIconMoon.classList.remove('hidden');
+                themeIconSun.classList.add('hidden');
+            }
+        }
+        applyInitialTheme(); 
+
+        // === Main Menu Navigation ===
+        startStandardPracticeBtn.addEventListener('click', () => navigateTo(inputSection));
+        startMockInterviewBtn.addEventListener('click', () => {
+            mockInterviewSetup.classList.remove('hidden');
+            mockInterviewActive.classList.add('hidden');
+            mockInterviewSummary.classList.add('hidden');
+            navigateTo(mockInterviewSection);
+        });
+        viewStatisticsBtn.addEventListener('click', () => { 
+            renderStatistics();
+            navigateTo(statisticsSection);
+        });
+        backToMainMenuBtnResults.addEventListener('click', () => navigateTo(mainMenuSection));
+        backToMainMenuBtnMock.addEventListener('click', () => navigateTo(mainMenuSection));
+        backToMainMenuBtnStats.addEventListener('click', () => navigateTo(mainMenuSection)); 
+
+
+        // === File Handling ===
+        function handleFiles(files) {
+            resumeError.textContent = '';
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === "application/pdf") {
+                    if (file.size <= 5 * 1024 * 1024) { 
+                        uploadedFileName = file.name;
+                        fileNameDisplay.innerHTML = `<span class="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-2" style="color:var(--success-color);"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg>${file.name}</span>`;
+                    } else {
+                        resumeError.textContent = '文件过大，请上传小于5MB的PDF。';
+                        resumeFile.value = ''; fileNameDisplay.textContent = ''; uploadedFileName = '';
+                    }
+                } else {
+                    resumeError.textContent = '文件格式错误，请上传PDF文件。';
+                    resumeFile.value = ''; fileNameDisplay.textContent = ''; uploadedFileName = '';
+                }
+            }
+        }
+        resumeFile.addEventListener('change', (event) => handleFiles(event.target.files));
+        dropZone.addEventListener('dragover', (event) => { event.preventDefault(); dropZone.classList.add('border-accent', 'bg-tertiary'); });
+        dropZone.addEventListener('dragleave', (event) => { event.preventDefault(); dropZone.classList.remove('border-accent', 'bg-tertiary'); });
+        dropZone.addEventListener('drop', (event) => {
+            event.preventDefault(); dropZone.classList.remove('border-accent', 'bg-tertiary');
+            const files = event.dataTransfer.files; resumeFile.files = files; handleFiles(files);
+        });
+        dropZone.addEventListener('click', () => { resumeFile.click(); });
+
+        // === Standard Practice: Generate Questions Logic ===
+        generateBtn.addEventListener('click', () => {
+            let isValid = true; resumeError.textContent = ''; jdError.textContent = '';
+            if (!resumeFile.files || resumeFile.files.length === 0) { resumeError.textContent = '请上传您的简历PDF文件。'; isValid = false; }
+            if (jobDescription.value.trim() === '') { jdError.textContent = '请输入岗位要求。'; isValid = false; }
+            if (!isValid) { showToast('请检查输入项。', 'error'); return; }
+
+            navigateTo(loadingSection);
+            setTimeout(() => {
+                initializeAndDisplayQuestions();
+                resultsSummary.textContent = `基于您的简历《${uploadedFileName || '未命名简历'}》和目标岗位。点击题目开始作答。`;
+                navigateTo(resultsSection);
+            }, 1500);
+        });
+        
+        function initializeAndDisplayQuestions() {
+             allGeneratedQuestions = [ 
+                { category: "计算机网络", questions: [
+                    { 
+                        id: "net1", text: "OSI七层模型和TCP/IP四层模型分别是什么？它们之间有什么对应关系？", difficulty: "简单", 
+                        referenceAnswer: "OSI七层：物理层、数据链路层、网络层、传输层、会话层、表示层、应用层。\nTCP/IP四层：网络接口层（链路层）、网际层（网络层）、传输层、应用层。\n对应关系：OSI的应用层、表示层、会话层对应TCP/IP的应用层。OSI的传输层对应TCP/IP的传输层。OSI的网络层对应TCP/IP的网际层。OSI的数据链路层和物理层对应TCP/IP的网络接口层。",
+                        resources: [{text:"OSI模型详解", url:"#"}],
+                        followUps: [
+                            { id: "net1_f1", text: "TCP/IP模型中的应用层常见的协议有哪些？请至少列举三个。", referenceAnswer: "常见的应用层协议有 HTTP/HTTPS (网页), FTP (文件传输), SMTP (邮件发送), POP3/IMAP (邮件接收), DNS (域名解析), Telnet (远程登录)等。" }
+                        ]
+                    },
+                    { 
+                        id: "net2", text: "HTTP常见的状态码有哪些？分别代表什么含义？（至少列举5类）", difficulty: "中等", 
+                        referenceAnswer: "1xx (信息性状态码): 100 Continue\n2xx (成功状态码): 200 OK, 201 Created, 204 No Content\n3xx (重定向状态码): 301 Moved Permanently, 302 Found, 304 Not Modified\n4xx (客户端错误状态码): 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found\n5xx (服务器错误状态码): 500 Internal Server Error, 502 Bad Gateway, 503 Service Unavailable",
+                        resources: [{text:"HTTP状态码大全", url:"#"}]
+                    }
+                ]},
+                { category: "数据结构与算法", questions: [
+                     { id: "ds1", text: "快速排序的平均时间复杂度和最坏时间复杂度分别是多少？如何优化最坏情况？", difficulty: "中等", referenceAnswer: "平均时间复杂度：O(n log n)\n最坏时间复杂度：O(n^2) (当输入数组已经有序或接近有序，且pivot选择不当时)\n\n优化最坏情况：\n1. 三数取中法选择pivot：从数组首、中、尾三个元素中选取中位数作为pivot。\n2. 随机选择pivot：随机选取一个元素作为pivot。\n3. 尾递归优化：对于递归调用中规模较小的那部分使用迭代实现，减少栈空间消耗。", resources: []}
+                ]},
+                { category: "计算机科学基础", questions: [
+                    { 
+                        id: "cs1", text: "请解释一下 TCP 的三次握手和四次挥手过程，并说明 TIME_WAIT 状态的作用。", difficulty: "中等", 
+                        referenceAnswer: { 
+                            summary: "TCP三次握手用于建立连接，确保双方收发能力正常。四次挥手用于断开连接，确保数据传输完毕且连接正常关闭。TIME_WAIT状态是为了保证TCP协议的全双工连接能够可靠地关闭。",
+                            keyPoints: [
+                                { point: "三次握手步骤", detail: "SYN, SYN-ACK, ACK 序列正确，并理解每个包的目的。" },
+                                { point: "四次挥手步骤", detail: "FIN, ACK, FIN, ACK 序列正确，理解主动关闭和被动关闭方的行为。" },
+                                { point: "TIME_WAIT作用", detail: "1. 防止已失效的连接请求报文段出现在本连接中。 2. 保证可靠地关闭TCP连接，即确保对方收到最后的ACK。" }
+                            ],
+                            commonMistakes: ["混淆TIME_WAIT和CLOSE_WAIT状态。", "对四次挥手中为何需要等待2MSL理解不清。"]
+                        },
+                        resources: [{text:"TCP详解", url:"#"}],
+                        followUps: [
+                            { id: "cs1_f1", text: "如果在TCP三次握手的第二次，服务器回复的SYN-ACK包在网络中丢失了，客户端会发生什么？服务器呢？", referenceAnswer: "客户端：由于长时间未收到SYN-ACK，客户端的SYN请求会超时。TCP通常有重传机制，客户端会重新发送SYN包。重传次数和间隔通常是指数增加，达到一定次数后放弃连接。\n服务器：服务器发送SYN-ACK后会进入SYN_RCVD状态，并等待客户端的ACK。如果SYN-ACK丢失，服务器同样会因未收到ACK而超时重传SYN-ACK包。若多次重传后仍未收到ACK，服务器最终会放弃此次连接请求，释放资源。" },
+                        ]
+                    }
+                ]}
+            ];
+            populateCategoryFilter(); 
+            currentQuestionListView = 'all';
+            updateQuestionListView();
+            updateCounts();
+        }
+        
+        // --- Standard Practice: Question List View Management & Filters ---
+        function populateCategoryFilter() {
+            const categories = [...new Set(allGeneratedQuestions.map(cat => cat.category))];
+            categoryFilter.innerHTML = '<option value="">所有分类</option>'; 
+            categories.forEach(catName => {
+                const option = document.createElement('option');
+                option.value = catName;
+                option.textContent = catName;
+                categoryFilter.appendChild(option);
+            });
+        }
+        applyFiltersBtn.addEventListener('click', () => updateQuestionListView());
+
+
+        function renderQuestions(questionsToRender) {
+            questionsListContainer.innerHTML = ''; 
+            let questionTextForCopy = "";
+            let globalQuestionIndex = 1;
+
+            let finalQuestionsToRender = questionsToRender;
+            if (currentQuestionListView === 'all') {
+                const selectedCat = categoryFilter.value;
+                const selectedDiff = difficultyFilter.value;
+                
+                finalQuestionsToRender = questionsToRender.map(cat => {
+                    if (selectedCat && cat.category !== selectedCat) {
+                        return {...cat, questions: []}; 
+                    }
+                    let filteredQs = cat.questions;
+                    if (selectedDiff) {
+                        filteredQs = filteredQs.filter(q => q.difficulty === selectedDiff);
+                    }
+                    return {...cat, questions: filteredQs};
+                }).filter(cat => cat.questions.length > 0);
+            }
+
+
+            if (finalQuestionsToRender.length === 0) {
+                emptyStateMessage.classList.remove('hidden');
+                emptyStateMessage.textContent = currentQuestionListView === 'favorites' ? '您还没有收藏任何题目哦，快去练习中发现宝藏吧！' :
+                                               currentQuestionListView === 'mistakes' ? '太棒了！错题本是空的，继续保持！' :
+                                               currentQuestionListView === 'customSets' ? '您还没有创建任何练习集，或当前练习集为空。' :
+                                               '没有找到相关题目，试试调整筛选条件。';
+                copyAllBtn.dataset.questions = "";
+                return;
+            }
+            emptyStateMessage.classList.add('hidden');
+
+            finalQuestionsToRender.forEach(cat => { 
+                const categoryTitle = document.createElement('h3');
+                categoryTitle.className = 'text-xl font-semibold text-accent mb-4 mt-6 first:mt-0';
+                categoryTitle.textContent = cat.category;
+                questionsListContainer.appendChild(categoryTitle);
+                questionTextForCopy += `\n--- ${cat.category} ---\n`;
+
+                const ul = document.createElement('ul');
+                ul.className = 'space-y-3';
+                cat.questions.forEach((qData) => {
+                    const li = document.createElement('li');
+                    li.className = 'p-4 card-bg rounded-lg shadow-md hover:shadow-accent transition-shadow duration-150 flex justify-between items-center border border-dynamic';
+                    
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'flex-1 cursor-pointer mr-2'; 
+                    contentDiv.addEventListener('click', () => showAnswerView(qData.id));
+
+                    const questionTextSpan = document.createElement('span');
+                    questionTextSpan.className = 'text-primary';
+                    
+                    const numberSpan = document.createElement('span');
+                    numberSpan.className = 'mr-2 text-accent font-medium';
+                    numberSpan.textContent = `${globalQuestionIndex}.`;
+                    
+                    const actualQuestionSpan = document.createElement('span');
+                    actualQuestionSpan.textContent = qData.text;
+
+                    questionTextSpan.appendChild(numberSpan);
+                    questionTextSpan.appendChild(actualQuestionSpan);
+                    contentDiv.appendChild(questionTextSpan);
+
+                    const controlsDiv = document.createElement('div');
+                    controlsDiv.className = 'flex items-center space-x-2'; 
+
+                    const difficultySpan = document.createElement('span');
+                    difficultySpan.className = 'difficulty-tag text-xs'; 
+                    difficultySpan.textContent = qData.difficulty;
+                    if (qData.difficulty === "简单") difficultySpan.classList.add('difficulty-easy');
+                    else if (qData.difficulty === "中等") difficultySpan.classList.add('difficulty-medium');
+                    else if (qData.difficulty === "困难") difficultySpan.classList.add('difficulty-hard');
+                    
+                    const favBtn = document.createElement('button');
+                    favBtn.className = `favorite-btn p-1 rounded-full hover:bg-quaternary ${favoriteQuestionIds.includes(qData.id) ? 'favorited' : ''}`;
+                    favBtn.title = favoriteQuestionIds.includes(qData.id) ? "取消收藏" : "收藏题目";
+                    favBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-secondary"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>`;
+                    favBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFavorite(qData.id, favBtn); });
+
+                    const addToSetBtn = document.createElement('button'); 
+                    addToSetBtn.className = 'p-1 rounded-full hover:bg-quaternary';
+                    addToSetBtn.title = "添加到练习集";
+                    addToSetBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-secondary"><path d="M12 5v14M5 12h14"></path></svg>`;
+                    addToSetBtn.addEventListener('click', (e) => { e.stopPropagation(); openAddToSetModal(qData.id); });
+
+                    // New: Mark as Mastered button for mistakes view
+                    if (currentQuestionListView === 'mistakes') {
+                        const markMasteredBtn = document.createElement('button');
+                        markMasteredBtn.className = 'p-1 rounded-full hover:bg-quaternary';
+                        markMasteredBtn.title = "标记为已掌握";
+                        markMasteredBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="var(--success-color)" class="w-4 h-4 text-secondary"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path></svg>`;
+                        markMasteredBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            markMistakeAsMastered(qData.id);
+                        });
+                        controlsDiv.appendChild(markMasteredBtn);
+                    }
+
+
+                    controlsDiv.appendChild(difficultySpan);
+                    controlsDiv.appendChild(favBtn);
+                    if (currentQuestionListView === 'all' || currentQuestionListView === 'favorites' || currentQuestionListView === 'mistakes') { 
+                        controlsDiv.appendChild(addToSetBtn);
+                    }
+                    
+                    li.appendChild(contentDiv);
+                    li.appendChild(controlsDiv);
+                    ul.appendChild(li);
+                    questionTextForCopy += `${globalQuestionIndex}. ${qData.text} (难度: ${qData.difficulty})\n`;
+                    globalQuestionIndex++;
+                });
+                questionsListContainer.appendChild(ul);
+            });
+            copyAllBtn.dataset.questions = questionTextForCopy.trim();
+        }
+        
+        function updateQuestionListView() {
+            let questionsToDisplay = [];
+            let title = "为您生成的专属技术面试题";
+            allQuestionsFilters.classList.add('hidden'); 
+            customSetsManagementArea.classList.add('hidden'); 
+            favoritesManagementArea.classList.add('hidden');
+            mistakesManagementArea.classList.add('hidden');
+
+
+            if (currentQuestionListView === 'all') {
+                questionsToDisplay = allGeneratedQuestions;
+                title = "全部题目";
+                allQuestionsFilters.classList.remove('hidden'); 
+            } else if (currentQuestionListView === 'favorites') {
+                title = "我的收藏";
+                favoritesManagementArea.classList.remove('hidden');
+                const favoriteDetails = allGeneratedQuestions.map(cat => ({
+                    ...cat,
+                    questions: cat.questions.filter(q => favoriteQuestionIds.includes(q.id))
+                })).filter(cat => cat.questions.length > 0);
+                questionsToDisplay = favoriteDetails;
+            } else if (currentQuestionListView === 'mistakes') {
+                title = "错题回顾";
+                mistakesManagementArea.classList.remove('hidden');
+                 const mistakeDetails = allGeneratedQuestions.map(cat => ({
+                    ...cat,
+                    questions: cat.questions.filter(q => mistakeLogEntries.some(entry => entry.questionId === q.id))
+                })).filter(cat => cat.questions.length > 0);
+                questionsToDisplay = mistakeDetails;
+            } else if (currentQuestionListView === 'customSets') {
+                title = "我的练习集";
+                customSetsManagementArea.classList.remove('hidden'); 
+                renderCustomSetsList(); 
+                questionsToDisplay = []; 
+            } else if (currentQuestionListView.startsWith('set_')) { 
+                const setId = currentQuestionListView.split('_')[1];
+                const set = customPracticeSets.find(s => s.id === setId);
+                if (set) {
+                    title = `练习集: ${set.name}`;
+                    questionsToDisplay = allGeneratedQuestions.map(cat => ({
+                        ...cat,
+                        questions: cat.questions.filter(q => set.questionIds.includes(q.id))
+                    })).filter(cat => cat.questions.length > 0);
+                } else {
+                    questionsToDisplay = [];
+                    title = "练习集未找到";
+                }
+            }
+
+            questionListTitle.textContent = title;
+            if (currentQuestionListView !== 'customSets') {
+                 renderQuestions(questionsToDisplay);
+            }
+            updateActiveNavButton();
+        }
+        
+        function updateActiveNavButton() {
+            [showAllQuestionsBtn, showFavoritesBtn, showMistakesBtn, showCustomSetsBtn].forEach(btn => {
+                btn.classList.remove('nav-btn-active');
+                if (btn.dataset.view === currentQuestionListView || (currentQuestionListView.startsWith('set_') && btn.dataset.view === 'customSets')) {
+                    btn.classList.add('nav-btn-active');
+                }
+            });
+        }
+
+        showAllQuestionsBtn.addEventListener('click', () => { currentQuestionListView = 'all'; updateQuestionListView(); });
+        showFavoritesBtn.addEventListener('click', () => { currentQuestionListView = 'favorites'; updateQuestionListView(); });
+        showMistakesBtn.addEventListener('click', () => { currentQuestionListView = 'mistakes'; updateQuestionListView(); });
+        showCustomSetsBtn.addEventListener('click', () => { currentQuestionListView = 'customSets'; updateQuestionListView(); }); 
+
+
+        function updateCounts() {
+            favoritesCountSpan.textContent = favoriteQuestionIds.length > 0 ? `(${favoriteQuestionIds.length})` : '';
+            mistakesCountSpan.textContent = mistakeLogEntries.length > 0 ? `(${mistakeLogEntries.length})` : '';
+            customSetsCountSpan.textContent = customPracticeSets.length > 0 ? `(${customPracticeSets.length})` : ''; 
+        }
+        
+        // --- Custom Practice Sets Logic ---
+        function openCreateSetModal() {
+            newSetNameInput.value = '';
+            createSetModal.classList.add('active');
+        }
+        function closeCreateSetModal() { createSetModal.classList.remove('active'); }
+        createNewSetBtn.addEventListener('click', openCreateSetModal);
+        cancelCreateSetBtn.addEventListener('click', closeCreateSetModal);
+        confirmCreateSetBtn.addEventListener('click', () => {
+            const setName = newSetNameInput.value.trim();
+            if (setName) {
+                customPracticeSets.push({ id: `set_${Date.now()}`, name: setName, questionIds: [] });
+                updateCounts();
+                renderCustomSetsList();
+                showToast(`练习集 "${setName}" 已创建!`, 'success');
+                closeCreateSetModal();
+            } else {
+                showToast('请输入练习集名称。', 'error');
+            }
+        });
+
+        function openAddToSetModal(questionId) {
+            if (customPracticeSets.length === 0) {
+                showToast('请先创建练习集。', 'error');
+                return;
+            }
+            questionToAddToSet = questionId;
+            selectSetDropdown.innerHTML = '';
+            customPracticeSets.forEach(set => {
+                const option = document.createElement('option');
+                option.value = set.id;
+                option.textContent = set.name;
+                selectSetDropdown.appendChild(option);
+            });
+            addToSetModal.classList.add('active');
+        }
+        function closeAddToSetModal() { 
+            addToSetModal.classList.remove('active'); 
+            questionToAddToSet = null;
+        }
+        cancelAddToSetBtn.addEventListener('click', closeAddToSetModal);
+        confirmAddToSetBtn.addEventListener('click', () => {
+            const setId = selectSetDropdown.value;
+            if (setId && questionToAddToSet) {
+                const set = customPracticeSets.find(s => s.id === setId);
+                if (set && !set.questionIds.includes(questionToAddToSet)) {
+                    set.questionIds.push(questionToAddToSet);
+                    showToast(`题目已添加到练习集 "${set.name}"。`, 'success');
+                } else if (set && set.questionIds.includes(questionToAddToSet)) {
+                    showToast(`题目已存在于练习集 "${set.name}" 中。`, 'warning');
+                }
+                renderCustomSetsList(); // Update count on the set list
+                closeAddToSetModal();
+            }
+        });
+
+        function renderCustomSetsList() {
+            customSetsList.innerHTML = '';
+            if (customPracticeSets.length === 0) {
+                customSetsList.innerHTML = `<p class="text-tertiary text-center py-4">您还没有创建任何练习集。</p>`;
+                return;
+            }
+            customPracticeSets.forEach(set => {
+                const setEl = document.createElement('div');
+                setEl.className = 'p-3 card-bg rounded-md flex justify-between items-center border border-dynamic';
+                setEl.innerHTML = `
+                    <span class="text-primary">${set.name} (${set.questionIds.length}题)</span>
+                    <div class="space-x-2">
+                        <button data-set-id="${set.id}" class="start-set-btn button-primary text-xs py-1 px-2 rounded">开始练习</button>
+                        <button data-set-id="${set.id}" class="delete-set-btn text-xs py-1 px-2 rounded" style="background-color:var(--error-color); color:white;">删除</button>
+                    </div>
+                `;
+                customSetsList.appendChild(setEl);
+            });
+
+            document.querySelectorAll('.start-set-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    currentQuestionListView = `set_${e.target.dataset.setId}`;
+                    updateQuestionListView();
+                });
+            });
+            document.querySelectorAll('.delete-set-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const setId = e.target.dataset.setId;
+                    customPracticeSets = customPracticeSets.filter(s => s.id !== setId);
+                    updateCounts();
+                    renderCustomSetsList(); 
+                    showToast('练习集已删除。', 'success');
+                });
+            });
+        }
+
+
+        // --- Standard Practice: Favorite Logic ---
+        function toggleFavorite(questionId, buttonElement = null) {
+            const index = favoriteQuestionIds.indexOf(questionId);
+            if (index > -1) {
+                favoriteQuestionIds.splice(index, 1);
+                showToast('已取消收藏');
+            } else {
+                favoriteQuestionIds.push(questionId);
+                showToast('已收藏！');
+            }
+            if (buttonElement) {
+                buttonElement.classList.toggle('favorited', favoriteQuestionIds.includes(questionId));
+                buttonElement.title = favoriteQuestionIds.includes(questionId) ? "取消收藏" : "收藏题目";
+            }
+            if (currentSelectedQuestionId === questionId && answerSection.classList.contains('hidden') === false) { 
+                 answerViewFavoriteBtn.classList.toggle('favorited', favoriteQuestionIds.includes(questionId));
+                 answerViewFavoriteBtn.title = favoriteQuestionIds.includes(questionId) ? "取消收藏" : "收藏题目";
+            }
+            updateCounts();
+            if (currentQuestionListView === 'favorites') { 
+                updateQuestionListView();
+            }
+        }
+        answerViewFavoriteBtn.addEventListener('click', () => {
+            if (currentSelectedQuestionId) {
+                toggleFavorite(currentSelectedQuestionId);
+            }
+        });
+
+        // --- Standard Practice: Answer View & Scoring Logic ---
+        function startAnswerTimer() {
+            clearInterval(currentAnswerTimerInterval);
+            currentAnswerStartTime = Date.now();
+            answerTimerDisplay.textContent = "用时: 00:00";
+            currentAnswerTimerInterval = setInterval(() => {
+                const elapsedTime = Math.floor((Date.now() - currentAnswerStartTime) / 1000);
+                answerTimerDisplay.textContent = `用时: ${formatTime(elapsedTime)}`;
+            }, 1000);
+        }
+        function stopAnswerTimer() { clearInterval(currentAnswerTimerInterval); }
+        
+        // Markdown Preview Toggle (New)
+        toggleAnswerPreviewBtn.addEventListener('click', () => {
+            const isPreviewVisible = !userAnswerPreview.classList.contains('hidden');
+            if (isPreviewVisible) {
+                userAnswerPreview.classList.add('hidden');
+                userAnswerText.classList.remove('hidden');
+                toggleAnswerPreviewBtn.textContent = "切换预览";
+            } else {
+                userAnswerPreview.innerHTML = marked.parse(userAnswerText.value || "暂无内容可预览。");
+                userAnswerPreview.classList.remove('hidden');
+                userAnswerText.classList.add('hidden');
+                toggleAnswerPreviewBtn.textContent = "编辑回答";
+            }
+        });
+
+
+        function showAnswerView(questionId) {
+            const questionData = allGeneratedQuestions.flatMap(cat => cat.questions).find(q => q.id === questionId);
+            if (!questionData) return;
+
+            currentSelectedQuestionId = questionId;
+            selectedQuestionText.textContent = questionData.text;
+            selectedQuestionDifficulty.textContent = questionData.difficulty;
+            selectedQuestionDifficulty.className = 'difficulty-tag mb-4 inline-block'; 
+            if (questionData.difficulty === "简单") selectedQuestionDifficulty.classList.add('difficulty-easy');
+            else if (questionData.difficulty === "中等") selectedQuestionDifficulty.classList.add('difficulty-medium');
+            else if (questionData.difficulty === "困难") selectedQuestionDifficulty.classList.add('difficulty-hard');
+
+            userAnswerText.value = ''; 
+            userAnswerPreview.classList.add('hidden'); // Hide preview initially
+            userAnswerText.classList.remove('hidden');
+            toggleAnswerPreviewBtn.textContent = "切换预览";
+
+            aiScoreSection.classList.add('hidden');
+            referenceAnswerSection.classList.add('hidden');
+            mistakeEntryDetails.classList.add('hidden');
+            followUpQuestionSection.classList.add('hidden'); 
+            followUpAnswerText.value = '';
+            followUpAiScoreSection.classList.add('hidden');
+
+
+            answerViewFavoriteBtn.classList.toggle('favorited', favoriteQuestionIds.includes(questionId));
+            answerViewFavoriteBtn.title = favoriteQuestionIds.includes(questionId) ? "取消收藏" : "收藏题目";
+            answerViewFavoriteBtn.dataset.questionId = questionId; 
+            
+            viewReferenceAnswerBtn.dataset.referenceAnswer = typeof questionData.referenceAnswer === 'string' ? questionData.referenceAnswer : questionData.referenceAnswer.summary; 
+            submitAnswerBtn.dataset.questionId = questionId;
+
+            relatedResourcesList.innerHTML = '';
+            if (questionData.resources && questionData.resources.length > 0) {
+                questionData.resources.forEach(res => {
+                    const li = document.createElement('li');
+                    const a = document.createElement('a');
+                    a.href = res.url;
+                    a.textContent = res.text;
+                    a.className = "text-accent-secondary hover:underline";
+                    a.target = "_blank"; 
+                    li.appendChild(a);
+                    relatedResourcesList.appendChild(li);
+                });
+            } else {
+                relatedResourcesList.innerHTML = '<li>暂无相关资源。</li>';
+            }
+
+            if (currentQuestionListView === 'mistakes') {
+                const mistakeEntry = mistakeLogEntries.find(entry => entry.questionId === questionId);
+                if (mistakeEntry) {
+                    mistakeEntryScore.textContent = `${mistakeEntry.score} / 100 分`;
+                    mistakeEntryFeedback.textContent = mistakeEntry.feedback; 
+                    mistakeEntryUserAnswer.textContent = mistakeEntry.userAnswer;
+                    mistakeEntryDetails.classList.remove('hidden');
+                }
+            }
+            startAnswerTimer();
+            navigateTo(answerSection);
+        }
+
+        backToQuestionsBtn.addEventListener('click', () => {
+            stopAnswerTimer();
+            currentSelectedQuestionId = null;
+            currentFollowUp = null;
+            navigateTo(resultsSection);
+            updateQuestionListView(); 
+        });
+
+        submitAnswerBtn.addEventListener('click', () => {
+            stopAnswerTimer();
+            const userAnswer = userAnswerText.value.trim();
+            const questionId = submitAnswerBtn.dataset.questionId;
+            const questionData = allGeneratedQuestions.flatMap(cat => cat.questions).find(q => q.id === questionId);
+
+            if (!userAnswer) {
+                showToast('请输入您的答案后再提交。', 'error');
+                startAnswerTimer(); 
+                return;
+            }
+            
+            aiScoreSection.classList.remove('hidden');
+            aiScoreDisplay.textContent = "评分中...";
+            aiFeedbackHighlights.textContent = "分析中...";
+            aiFeedbackImprovements.textContent = "分析中...";
+            aiFeedbackSuggestions.textContent = "分析中...";
+
+            practiceStats.totalAnsweredStandard++;
+            const questionCategory = allGeneratedQuestions.find(cat => cat.questions.some(q => q.id === questionId))?.category || '未知分类';
+            if (!practiceStats.categoryAttempts[questionCategory]) {
+                practiceStats.categoryAttempts[questionCategory] = { correct: 0, total: 0, totalScore: 0, mistakeCount: 0 };
+            }
+            practiceStats.categoryAttempts[questionCategory].total++;
+
+
+            setTimeout(() => {
+                const randomScore = Math.floor(Math.random() * 51) + 50; 
+                practiceStats.totalScoreStandard += randomScore;
+                if (randomScore >= MISTAKE_THRESHOLD) practiceStats.categoryAttempts[questionCategory].correct++;
+                practiceStats.categoryAttempts[questionCategory].totalScore += randomScore;
+
+                let simpleFeedbackText = ""; 
+                let highlights = "模拟亮点：回答了关键点A。";
+                let improvements = "模拟可改进：对于B的阐述可以更深入。";
+                let suggestions = "模拟建议：复习C相关知识。";
+
+                aiScoreDisplay.textContent = `${randomScore} / 100 分`;
+                aiScoreDisplay.className = 'text-2xl font-bold ';
+                if (randomScore >= 90) {
+                    aiScoreDisplay.classList.add('text-green-400'); 
+                    simpleFeedbackText = "优秀！您的回答非常全面且准确。";
+                    highlights = "知识点覆盖全面，逻辑清晰，表达准确。对[关键点1]和[关键点2]的理解非常到位。";
+                    improvements = "可以尝试思考该问题在不同场景下的变种，或者与其他相关概念（如[相关概念X]）进行对比分析。";
+                    suggestions = "保持这个状态，挑战更难的题目！可以深入研究[进阶主题Y]。";
+                } else if (randomScore >= MISTAKE_THRESHOLD) { 
+                    aiScoreDisplay.classList.add('text-yellow-400');
+                    simpleFeedbackText = "良好，回答基本正确，但部分细节可以更完善。";
+                    highlights = "主要概念（如[核心概念A]）理解正确，基本流程描述清晰。";
+                    improvements = `某些细节（例如[细节X]的边界条件或[细节Y]的潜在问题）可以补充得更完整。对[得分点Z]的阐述略显简略。`;
+                    suggestions = "建议回顾[知识点P]和[知识点Q]，加强细节理解和案例分析。";
+                } else if (randomScore >= 60) { 
+                    aiScoreDisplay.classList.add('text-orange-400'); 
+                    simpleFeedbackText = "一般，回答中存在一些不足，建议参考答案并加强理解。";
+                     highlights = "部分概念（如[概念M]）有提及，显示出一定的了解。";
+                    improvements = "核心逻辑（如[核心逻辑N]）的理解可能存在偏差，对[概念O]的解释不够清晰或准确。";
+                    suggestions = "请仔细对照参考答案，重点学习[概念O]和[核心逻辑N]的正确表述和原理。";
+                } else { 
+                     aiScoreDisplay.classList.add('text-red-400');
+                    simpleFeedbackText = "有较大提升空间，请仔细对照参考答案，巩固知识点。";
+                    highlights = "能够识别问题所属的技术范畴。";
+                    improvements = "关键知识点（如[关键点R]、[关键点S]）缺失较多，回答结构不够系统。";
+                    suggestions = "建议系统学习该模块的基础知识，特别是[基础模块T]和[基础模块U]。";
+                }
+                aiFeedbackHighlights.textContent = highlights;
+                aiFeedbackImprovements.textContent = improvements;
+                aiFeedbackSuggestions.textContent = suggestions;
+
+
+                if (randomScore < MISTAKE_THRESHOLD) {
+                    const existingMistakeIndex = mistakeLogEntries.findIndex(entry => entry.questionId === questionId);
+                    const newMistakeEntry = { questionId, userAnswer, score: randomScore, feedback: simpleFeedbackText, timestamp: new Date().toISOString(), category: questionCategory }; 
+                    if (existingMistakeIndex > -1) {
+                        mistakeLogEntries[existingMistakeIndex] = newMistakeEntry; 
+                    } else {
+                        mistakeLogEntries.push(newMistakeEntry);
+                    }
+                    practiceStats.categoryAttempts[questionCategory].mistakeCount = (practiceStats.categoryAttempts[questionCategory].mistakeCount || 0) + 1;
+                    showToast('已加入错题本。', 'error');
+                } else {
+                    const existingMistakeIndex = mistakeLogEntries.findIndex(entry => entry.questionId === questionId);
+                    if (existingMistakeIndex > -1) {
+                        mistakeLogEntries.splice(existingMistakeIndex, 1);
+                        showToast('恭喜！已从错题本移除。', 'success');
+                    }
+                }
+                updateCounts();
+                showToast('AI评分完成！');
+
+                if (randomScore >= 70 && questionData && questionData.followUps && questionData.followUps.length > 0) {
+                    currentFollowUp = questionData.followUps[Math.floor(Math.random() * questionData.followUps.length)]; 
+                    followUpQuestionText.textContent = currentFollowUp.text;
+                    followUpAnswerText.value = '';
+                    followUpAiScoreSection.classList.add('hidden');
+                    followUpQuestionSection.classList.remove('hidden');
+                    followUpAnswerText.focus();
+                    showToast('AI有追问，请作答！', 'success');
+                } else {
+                    currentFollowUp = null;
+                    followUpQuestionSection.classList.add('hidden');
+                }
+
+            }, 1500);
+        });
+
+        submitFollowUpAnswerBtn.addEventListener('click', () => {
+            const userAnswer = followUpAnswerText.value.trim();
+            if (!userAnswer) {
+                showToast('请输入对追问的回答。', 'error');
+                return;
+            }
+            if (!currentFollowUp) return; 
+
+            followUpAiScoreSection.classList.remove('hidden');
+            followUpAiScoreDisplay.textContent = "追问评分中...";
+            followUpAiFeedbackDisplay.textContent = "";
+
+            setTimeout(() => {
+                const randomScore = Math.floor(Math.random() * 41) + 60; 
+                followUpAiScoreDisplay.className = 'text-md font-bold ';
+                 if (randomScore >= 90) {
+                    followUpAiScoreDisplay.classList.add('text-green-400');
+                    followUpAiFeedbackDisplay.textContent = "追问回答优秀，理解深入！";
+                } else if (randomScore >= 75) {
+                    followUpAiScoreDisplay.classList.add('text-yellow-400');
+                    followUpAiFeedbackDisplay.textContent = "追问回答良好，基本正确。";
+                } else {
+                    followUpAiScoreDisplay.classList.add('text-orange-400');
+                    followUpAiFeedbackDisplay.textContent = "追问回答一般，仍有提升空间。";
+                }
+                showToast('追问回答评分完成！');
+            }, 1000);
+        });
+
+
+        viewReferenceAnswerBtn.addEventListener('click', (event) => {
+            let refAnswerText = event.target.dataset.referenceAnswer || "暂无参考答案。";
+            try {
+                const refObj = JSON.parse(refAnswerText); 
+                if (refObj && refObj.summary) {
+                    refAnswerText = refObj.summary;
+                }
+            } catch(e) { /* it's already a string, do nothing */ }
+
+            referenceAnswerDisplay.textContent = refAnswerText;
+            referenceAnswerSection.classList.remove('hidden');
+            showToast('参考答案已显示。');
+        });
+        
+        // --- Mistake Management (New) ---
+        function markMistakeAsMastered(questionId) {
+            const mistakeIndex = mistakeLogEntries.findIndex(entry => entry.questionId === questionId);
+            if (mistakeIndex > -1) {
+                mistakeLogEntries.splice(mistakeIndex, 1);
+                showToast("题目已标记为掌握，并从错题本移除。", "success");
+                updateCounts();
+                if (currentQuestionListView === 'mistakes') {
+                    updateQuestionListView(); // Refresh the mistakes list
+                }
+            }
+        }
+
+
+        // --- Data Export (Placeholders) ---
+        function exportData(data, filename, type = 'text/plain') {
+            if (!data || data.length === 0) { // Added check for undefined or empty data
+                showToast('没有数据可导出。', 'error');
+                return;
+            }
+            let content = "";
+            if (type.includes('json')) {
+                content = JSON.stringify(data, null, 2);
+            } else { 
+                if (Array.isArray(data) && data.every(item => item && typeof item.text === 'string')) { 
+                     data.forEach((cat, catIndex) => {
+                        if (cat && cat.category && Array.isArray(cat.questions)) { // Add null checks
+                            content += `\n--- ${cat.category} ---\n\n`;
+                            cat.questions.forEach((q, qIndex) => {
+                                if (q && q.text) { // Add null checks
+                                    content += `${qIndex + 1}. ${q.text}\n   (难度: ${q.difficulty || '未知'})\n`;
+                                    if (q.referenceAnswer) {
+                                        const ref = typeof q.referenceAnswer === 'string' ? q.referenceAnswer : (q.referenceAnswer.summary || '无摘要');
+                                        content += `   参考答案: ${ref}\n\n`;
+                                    } else {
+                                        content += `\n`;
+                                    }
+                                }
+                            });
+                        }
+                    });
+                } else if (typeof data === 'string') { 
+                    content = data;
+                } else { 
+                    content = JSON.stringify(data, null, 2);
+                }
+            }
+
+            const blob = new Blob([content], { type });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+            showToast(`${filename} 已导出!`, 'success');
+        }
+
+        exportAllQuestionsBtn.addEventListener('click', () => {
+            let questionsToExport = [];
+            if (currentQuestionListView === 'all') {
+                const selectedCat = categoryFilter.value;
+                const selectedDiff = difficultyFilter.value;
+                questionsToExport = allGeneratedQuestions.map(cat => {
+                     if (selectedCat && cat.category !== selectedCat) return {...cat, questions: []};
+                     let filteredQs = cat.questions;
+                     if (selectedDiff) filteredQs = filteredQs.filter(q => q.difficulty === selectedDiff);
+                     return {...cat, questions: filteredQs};
+                }).filter(cat => cat.questions.length > 0);
+            } else if (currentQuestionListView === 'favorites') {
+                questionsToExport = allGeneratedQuestions.map(cat => ({...cat, questions: cat.questions.filter(q => favoriteQuestionIds.includes(q.id))})).filter(cat => cat.questions.length > 0);
+            } else if (currentQuestionListView === 'mistakes') {
+                questionsToExport = allGeneratedQuestions.map(cat => ({...cat, questions: cat.questions.filter(q => mistakeLogEntries.some(m => m.questionId === q.id))})).filter(cat => cat.questions.length > 0);
+            } else if (currentQuestionListView.startsWith('set_')) {
+                const setId = currentQuestionListView.split('_')[1];
+                const set = customPracticeSets.find(s => s.id === setId);
+                if (set) {
+                     questionsToExport = allGeneratedQuestions.map(cat => ({...cat, questions: cat.questions.filter(q => set.questionIds.includes(q.id))})).filter(cat => cat.questions.length > 0);
+                }
+            } else {
+                showToast('当前视图不支持导出。', 'error');
+                return;
+            }
+            exportData(questionsToExport, `ai_面试题_${currentQuestionListView}.txt`);
+        });
+
+        exportFavoritesBtn.addEventListener('click', () => {
+            const favoriteDetails = allGeneratedQuestions.flatMap(cat => cat.questions.filter(q => favoriteQuestionIds.includes(q.id)));
+            exportData(favoriteDetails, '收藏题目.json', 'application/json');
+        });
+        exportMistakesBtn.addEventListener('click', () => {
+            exportData(mistakeLogEntries, '错题本记录.json', 'application/json');
+        });
+        exportCustomSetsBtn.addEventListener('click', () => {
+             exportData(customPracticeSets, '我的练习集.json', 'application/json');
+        });
+
+
+        copyAllBtn.addEventListener('click', () => { 
+            const textToCopy = copyAllBtn.dataset.questions;
+            if (!textToCopy || textToCopy.trim() === "") {
+                showToast('当前列表为空，无法复制。', 'error');
+                return;
+            }
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => showToast('当前列表题目已复制！'))
+                    .catch(err => { console.error('复制失败: ', err); fallbackCopyTextToClipboard(textToCopy); });
+            } else { fallbackCopyTextToClipboard(textToCopy); }
+        });
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0"; textArea.style.left = "0"; textArea.style.position = "fixed";
+            document.body.appendChild(textArea); textArea.focus(); textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) { showToast('当前列表题目已复制！'); } 
+                else { showToast('复制失败，请手动复制。', 'error'); }
+            } catch (err) { console.error('备用复制失败: ', err); showToast('复制失败，请手动复制。', 'error'); }
+            document.body.removeChild(textArea);
+        }
+        resetBtnStandard.addEventListener('click', () => { 
+            navigateTo(inputSection); 
+            resumeFile.value = ''; fileNameDisplay.textContent = ''; uploadedFileName = '';
+            jobDescription.value = ''; resumeError.textContent = ''; jdError.textContent = '';
+            showToast('请重新上传简历和JD以生成新题目。', 'success');
+        });
+
+        // === Mock Interview Mode Logic === 
+        function startNewMockInterview() {
+            mockInterviewState.isActive = true;
+            mockInterviewState.durationMinutes = parseInt(mockInterviewDuration.value);
+            mockInterviewState.startTime = Date.now();
+            mockInterviewState.currentQuestionIndex = 0;
+            mockInterviewState.answers = [];
+            mockInterviewState.role = mockInterviewRole.options[mockInterviewRole.selectedIndex].text;
+
+
+            const allFlatQuestions = allGeneratedQuestions.flatMap(cat => cat.questions);
+            if (allFlatQuestions.length === 0) { 
+                showToast("请先在标准模式下生成一些题目！", "error");
+                navigateTo(mainMenuSection); 
+                return;
+            }
+            let filteredForRole = allFlatQuestions;
+            if (mockInterviewState.role.includes("Java后端")) {
+                filteredForRole = allFlatQuestions.filter(q => q.category?.includes("数据库") || q.category?.includes("系统设计") || q.text.toLowerCase().includes("java"));
+            } else if (mockInterviewState.role.includes("前端")) {
+                 filteredForRole = allFlatQuestions.filter(q => q.category?.includes("网络") || q.text.toLowerCase().includes("http") || q.text.toLowerCase().includes("javascript"));
+            }
+            if (filteredForRole.length < 3) filteredForRole = allFlatQuestions; 
+
+            mockInterviewState.questions = filteredForRole.sort(() => 0.5 - Math.random()).slice(0, 5); 
+            if (mockInterviewState.questions.length === 0) { 
+                 showToast("未能根据角色筛选到足够题目，请生成更多题目或选择通用技术岗。", "error");
+                 navigateTo(mockInterviewSetup);
+                 return;
+            }
+            mockTotalQNum.textContent = mockInterviewState.questions.length;
+
+            mockInterviewSetup.classList.add('hidden');
+            mockInterviewActive.classList.remove('hidden');
+            mockInterviewSummary.classList.add('hidden');
+
+            updateMockInterviewTimer();
+            mockInterviewState.timerInterval = setInterval(updateMockInterviewTimer, 1000);
+            displayCurrentMockQuestion();
+        }
+
+        function updateMockInterviewTimer() {
+            const elapsedTimeSeconds = Math.floor((Date.now() - mockInterviewState.startTime) / 1000);
+            const remainingTimeSeconds = (mockInterviewState.durationMinutes * 60) - elapsedTimeSeconds;
+
+            if (remainingTimeSeconds <= 0) {
+                endMockInterview(true); 
+                return;
+            }
+            mockInterviewTimerDisplay.textContent = `${formatTime(elapsedTimeSeconds)} / ${formatTime(mockInterviewState.durationMinutes * 60)}`;
+        }
+
+        function displayCurrentMockQuestion() {
+            if (mockInterviewState.currentQuestionIndex >= mockInterviewState.questions.length) {
+                endMockInterview(false); 
+                return;
+            }
+            const qData = mockInterviewState.questions[mockInterviewState.currentQuestionIndex];
+            mockCurrentQNum.textContent = mockInterviewState.currentQuestionIndex + 1;
+            mockQuestionText.textContent = qData.text;
+            mockAnswerText.value = ''; 
+            mockAnswerText.focus();
+        }
+
+        function handleMockAnswerSubmission() {
+            const currentQ = mockInterviewState.questions[mockInterviewState.currentQuestionIndex];
+            mockInterviewState.answers.push({
+                questionId: currentQ.id,
+                questionText: currentQ.text,
+                answerText: mockAnswerText.value.trim(),
+                skipped: false 
+            });
+
+            mockInterviewState.currentQuestionIndex++;
+            if (mockInterviewState.currentQuestionIndex >= mockInterviewState.questions.length) {
+                endMockInterview(false);
+            } else {
+                displayCurrentMockQuestion();
+            }
+        }
+        
+        mockNextQuestionBtn.addEventListener('click', handleMockAnswerSubmission);
+        mockSkipQuestionBtn.addEventListener('click', () => {
+            const currentQ = mockInterviewState.questions[mockInterviewState.currentQuestionIndex];
+            mockInterviewState.answers.push({
+                questionId: currentQ.id,
+                questionText: currentQ.text,
+                answerText: "[已跳过]",
+                skipped: true
+            });
+            mockInterviewState.currentQuestionIndex++;
+             if (mockInterviewState.currentQuestionIndex >= mockInterviewState.questions.length) {
+                endMockInterview(false);
+            } else {
+                displayCurrentMockQuestion();
+            }
+        });
+
+        function endMockInterview(timedOut = false) {
+            clearInterval(mockInterviewState.timerInterval);
+            mockInterviewState.isActive = false;
+            practiceStats.mockInterviewsCompleted++;
+            
+            mockInterviewActive.classList.add('hidden');
+            mockInterviewSummary.classList.remove('hidden');
+
+            const timeTakenMs = Date.now() - mockInterviewState.startTime;
+            mockTotalTimeTaken.textContent = formatTime(Math.floor(timeTakenMs / 1000));
+            summaryRole.textContent = mockInterviewState.role || "通用技术岗";
+            
+            let answeredCount = 0;
+            mockSummaryList.innerHTML = ''; 
+            mockInterviewState.answers.forEach((ans, index) => {
+                if (!ans.skipped && ans.answerText) answeredCount++;
+                const li = document.createElement('li');
+                li.className = "p-2 bg-secondary border border-dynamic rounded-md text-sm";
+                li.innerHTML = `
+                    <p class="font-medium text-primary">题目 ${index + 1}: ${ans.questionText.substring(0, 50)}...</p>
+                    <p class="text-secondary mt-1">您的回答: ${ans.skipped ? '<em class="text-tertiary">[已跳过]</em>' : (ans.answerText.substring(0, 70) + (ans.answerText.length > 70 ? '...' : ''))}</p>
+                `;
+                mockSummaryList.appendChild(li);
+            });
+            mockAnsweredCount.textContent = answeredCount;
+            mockTotalAttempted.textContent = mockInterviewState.questions.length;
+
+            summaryOverallAssessment.textContent = `本次针对“${mockInterviewState.role}”的模拟面试表现${answeredCount > mockInterviewState.questions.length / 2 ? '良好' : '有待提高'}。共回答 ${answeredCount} 道题目。`;
+            summaryStrengths.innerHTML = `<li>对${mockInterviewState.questions[0]?.category || '某些'}方面的问题回答较好。</li><li>展现了${answeredCount > 2 ? '一定的' : '初步的'}思考能力。</li>`;
+            summaryWeaknesses.innerHTML = `<li>在${mockInterviewState.questions[mockInterviewState.questions.length -1]?.category || '部分'}问题上可能需要加强。</li><li>时间管理上可以${timedOut ? '更注意' : '保持'}。</li>`;
+
+
+            if (timedOut) {
+                showToast("模拟面试时间到！", "warning");
+            } else {
+                showToast("模拟面试已完成！", "success");
+            }
+        }
+        
+        beginMockInterviewBtn.addEventListener('click', startNewMockInterview);
+        mockInterviewEndBtn.addEventListener('click', () => navigateTo(mainMenuSection));
+
+        // === Statistics Logic (Enhanced) ===
+        function renderStatistics() {
+            // Fetch elements inside the function to ensure they are available
+            const statsTotalAnsweredEl = document.getElementById('statsTotalAnswered');
+            const statsAverageScoreEl = document.getElementById('statsAverageScore');
+            const statsMockInterviewsCompletedEl = document.getElementById('statsMockInterviewsCompleted');
+            const statsTotalFavoritesEl = document.getElementById('statsTotalFavorites');
+            const statsTotalMistakesEl = document.getElementById('statsTotalMistakes');
+            const statsCategoryAverageScoresEl = document.getElementById('statsCategoryAverageScores');
+            const statsCategoryRadarPlaceholderEl = document.getElementById('statsCategoryRadarPlaceholder'); // This ID is for the radar chart placeholder in HTML
+            const statsMistakeCategoriesEl = document.getElementById('statsMistakeCategories');
+            const statsNoMistakesYetEl = document.getElementById('statsNoMistakesYet');
+
+            // Null check for essential elements
+            if (!statsTotalAnsweredEl || !statsAverageScoreEl || !statsMockInterviewsCompletedEl || !statsTotalFavoritesEl || !statsTotalMistakesEl || !statsCategoryAverageScoresEl || !statsMistakeCategoriesEl || !statsNoMistakesYetEl) {
+                console.error("One or more statistics display elements are missing from the DOM in renderStatistics!");
+                return;
+            }
+
+
+            statsTotalAnsweredEl.textContent = practiceStats.totalAnsweredStandard;
+            statsTotalFavoritesEl.textContent = favoriteQuestionIds.length;
+            statsTotalMistakesEl.textContent = mistakeLogEntries.length;
+            statsMockInterviewsCompletedEl.textContent = practiceStats.mockInterviewsCompleted;
+
+            if (practiceStats.totalAnsweredStandard > 0) {
+                statsAverageScoreEl.textContent = (practiceStats.totalScoreStandard / practiceStats.totalAnsweredStandard).toFixed(1) + " 分";
+            } else {
+                statsAverageScoreEl.textContent = "N/A";
+            }
+
+            statsCategoryAverageScoresEl.innerHTML = '';
+            const categoryNamesForAvg = Object.keys(practiceStats.categoryAttempts);
+            if (categoryNamesForAvg.length > 0) {
+                let hasDataForAvgScores = false;
+                categoryNamesForAvg.forEach(catName => {
+                    const catData = practiceStats.categoryAttempts[catName];
+                    if (catData.total > 0) {
+                        hasDataForAvgScores = true;
+                        const avgScore = (catData.totalScore / catData.total).toFixed(1);
+                        const p = document.createElement('p');
+                        p.className = "text-secondary";
+                        p.innerHTML = `${catName}: <span class="font-medium text-primary">${avgScore} 分</span> (${catData.correct}/${catData.total} 正确)`;
+                        statsCategoryAverageScoresEl.appendChild(p);
+                    }
+                });
+                if (!hasDataForAvgScores) {
+                     statsCategoryAverageScoresEl.innerHTML = '<p class="text-tertiary">暂无足够数据。</p>';
+                }
+            } else {
+                 statsCategoryAverageScoresEl.innerHTML = '<p class="text-tertiary">暂无足够数据。</p>';
+            }
+
+            const mistakeCategoryCounts = mistakeLogEntries.reduce((acc, entry) => {
+                acc[entry.category] = (acc[entry.category] || 0) + 1;
+                return acc;
+            }, {});
+            
+            statsMistakeCategoriesEl.innerHTML = '';
+            const sortedMistakeCats = Object.entries(mistakeCategoryCounts).sort(([,a],[,b]) => b-a);
+            if (sortedMistakeCats.length > 0) {
+                statsNoMistakesYetEl.classList.add('hidden');
+                sortedMistakeCats.slice(0, 5).forEach(([cat, count]) => { 
+                    const li = document.createElement('li');
+                    li.textContent = `${cat}: ${count} 次错误`;
+                    statsMistakeCategoriesEl.appendChild(li);
+                });
+            } else {
+                statsNoMistakesYetEl.classList.remove('hidden');
+            }
+            
+            // The ID 'statsCategoryRadarPlaceholder' in the HTML is for "练习活跃度 (模拟图表)"
+            // The JS logic was trying to use it for "各分类掌握度".
+            // Let's assume the HTML's "练习活跃度" placeholder is what we want to update.
+            // The div for "各分类掌握度" is `statsCategoryAverageScoresEl` which is already handled.
+            // The div with class `chart-placeholder` is for "练习活跃度".
+            const activityChartPlaceholder = statisticsSection.querySelector('.chart-placeholder');
+            if (activityChartPlaceholder) {
+                 if (practiceStats.totalAnsweredStandard > 0 || practiceStats.mockInterviewsCompleted > 0) {
+                    activityChartPlaceholder.textContent = `[ 练习活跃度图表: 已练习 ${practiceStats.totalAnsweredStandard} 题, 完成 ${practiceStats.mockInterviewsCompleted} 次模拟面试 ]`;
+                } else {
+                    activityChartPlaceholder.textContent = `[ 暂无练习数据生成活跃度图表 ]`;
+                }
+            }
+        }
+
+        // === Modal Logic ===
+        [createSetModal, addToSetModal].forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) { 
+                    modal.classList.remove('active');
+                }
+            });
+        });
+
+
+        // --- Initial Setup ---
+        navigateTo(mainMenuSection); 
+        updateCounts();
+        updateActiveNavButton();
+
+    </script>
+</body>
+</html>
