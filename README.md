@@ -122,5 +122,5 @@
 
 本项目采用 MIT License 开源许可。
 
-*（如需要，请添加 `LICENSE.txt` 文件）*
+
 

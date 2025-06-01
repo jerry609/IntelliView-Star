@@ -5,9 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "VITE_API_MOCK_ENABLED=true vite",
+    "dev:api": "VITE_API_MOCK_ENABLED=false vite",
     "build": "vite build",
+    "build:staging": "vite build --mode staging",
     "preview": "vite preview",
-    "lint": "eslint . --ext .vue,.js,.ts --fix"
+    "lint": "eslint . --ext vue,js,jsx,ts,tsx --fix",
+    "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {
     "vue": "^3.4.0",
